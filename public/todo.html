@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Todo App</title>
+<style>
+    :root {
+        --primary-bg: #f0f2f5;
+        --card-bg: #ffffff;
+        --accent: #2ecc71;
+        --danger: #e74c3c;
+        --warning: #f1c40f;
+        --text: #2c3e50;
+        --shadow: 0 10px 20px rgba(0,0,0,0.05);
+    }
+
+    body {
+        font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        background-color: var(--primary-bg);
+        color: var(--text);
+        padding: 40px 20px;
+        margin: 0;
+    }
+
+    .container {
+        max-width: 1000px;
+        margin: auto;
+    }
+
+    /* Header Styling */
+    .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+        border-bottom: 2px solid rgba(0,0,0,0.05);
+        padding-bottom: 15px;
+    }
+
+    .header h1 {
+        margin: 0;
+        font-size: 1.8rem;
+        letter-spacing: -1px;
+    }
+
+    /* Modern Upload Form */
+    .form-container {
+        background: var(--card-bg);
+        padding: 25px;
+        margin-bottom: 40px;
+        border-radius: 15px;
+        box-shadow: var(--shadow);
+        display: flex;
+        gap: 15px;
+        align-items: center;
+        transition: box-shadow 0.3s ease;
+    }
+
+    .form-container:focus-within {
+        box-shadow: 0 15px 30px rgba(0,0,0,0.1);
+    }
+
+    .form-container input[type="text"] {
+        flex: 2;
+        padding: 12px 18px;
+        border: 2px solid #edf2f7;
+        border-radius: 10px;
+        font-size: 1rem;
+        outline: none;
+        transition: border-color 0.3s;
+    }
+
+    .form-container input[type="text"]:focus {
+        border-color: var(--accent);
+    }
+
+    .form-container input[type="file"] {
+        flex: 1;
+        font-size: 0.9rem;
+        color: #718096;
+    }
+
+    /* Universal Button Styling */
+    .btn {
+        padding: 12px 25px;
+        background: var(--accent);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.2s;
+        box-shadow: 0 4px 6px rgba(46, 204, 113, 0.2);
+    }
+
+    .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 7px 14px rgba(46, 204, 113, 0.3);
+        filter: brightness(1.05);
+    }
+
+    .btn-logout {
+        background: var(--danger);
+        box-shadow: 0 4px 6px rgba(231, 76, 60, 0.2);
+    }
+
+    /* Responsive Grid */
+    #list {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 25px;
+        padding: 0;
+        list-style: none;
+    }
+
+    /* Task Card UI */
+    .card {
+        background: var(--card-bg);
+        border-radius: 18px;
+        box-shadow: var(--shadow);
+        overflow: hidden;
+        text-align: center;
+        padding-bottom: 20px;
+        transition: all 0.3s ease;
+        border: 1px solid rgba(0,0,0,0.03);
+    }
+
+    .card:hover {
+        transform: translateY(-10px);
+        box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+    }
+
+    .card img {
+        width: 100%;
+        height: 220px;
+        object-fit: cover;
+        background: #f7fafc;
+        border-bottom: 1px solid #edf2f7;
+    }
+
+    .card h3 {
+        color: var(--text);
+        margin: 20px 15px 15px;
+        font-size: 1.25rem;
+        font-weight: 600;
+    }
+
+    .card .button-group {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+        margin-top: 10px;
+    }
+
+    .card button {
+        padding: 8px 18px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 0.9rem;
+        transition: 0.2s;
+    }
+
+    .btn-del {
+        background: #fee2e2;
+        color: var(--danger);
+    }
+
+    .btn-del:hover {
+        background: var(--danger);
+        color: white;
+    }
+
+    .btn-upd {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .btn-upd:hover {
+        background: var(--warning);
+        color: black;
+    }
+</style>
+</head>
+
+<body>
+
+    <div class="container">
+        <div class="header">
+            <h2>Todo App</h2>
+            <button class="btn btn-logout" onclick="logout()">Logout</button>
+        </div>
+
+        <div class="form-container">
+            <input type="text" id="task" placeholder="Enter task name" name="task">
+            <input type="file" id="uploaded_file" name="uploaded_file" accept="image/*">
+            <button class="btn" onclick="addTodo()">Add Task</button>
+        </div>
+
+        <ul id="list"></ul>
+    </div>
+
+    <script>
+        const token = localStorage.getItem("token");
+
+        // Agar token nahi hai toh wapas login par bhej do
+        if (!token) {
+            window.location.href = "login.html";
+        }
+
+        // Load todos
+        async function loadTodos() {
+            const res = await fetch("/todos", {
+                headers: { "Authorization": token }
+            });
+
+            if (res.status === 401 || res.status === 403) {
+                return logout();
+            }
+
+            const data = await res.json();
+            const list = document.getElementById("list");
+            list.innerHTML = "";
+
+            data.forEach(todo => {
+                const li = document.createElement("li");
+                li.className = "card";
+
+                // Image tag - relative path use kar raha hai (e.g., /uploads/filename)
+                const imageTag = todo.imageUrl
+                    ? `<img src="${todo.imageUrl}" alt="Task Image">`
+                    : `<img src="https://via.placeholder.com/250x200?text=No+Image" alt="Placeholder">`;
+
+                li.innerHTML = `
+      ${imageTag}
+      <h3>${todo.task}</h3>
+      <button class="btn-upd" onclick="updateTodo(${todo.id}, '${todo.task.replace(/'/g, "\\'")}')">Update</button>
+      <button class="btn-del" onclick="deleteTodo(${todo.id})">Delete</button>
+    `;
+
+                list.appendChild(li);
+            });
+        }
+
+        // Add todo 
+        async function addTodo() {
+            const taskInput = document.getElementById("task").value;
+            const fileInput = document.getElementById("uploaded_file").files[0];
+
+            if (!taskInput) return alert("Task name is required!");
+
+            const formData = new FormData();
+            formData.append("task", taskInput);
+            if (fileInput) {
+                formData.append("uploaded_file", fileInput);
+            }
+
+            await fetch("/todos", {
+                method: "POST",
+                headers: { "Authorization": token },
+                body: formData
+            });
+
+            document.getElementById("task").value = "";
+            document.getElementById("uploaded_file").value = "";
+            loadTodos();
+        }
+
+        // Delete todo
+        async function deleteTodo(id) {
+            await fetch(`/todos/${id}`, {
+                method: "DELETE",
+                headers: { "Authorization": token }
+            });
+            loadTodos();
+        }
+
+        // Update todo
+        async function updateTodo(id, oldTask) {
+            const newTask = prompt("Enter new task", oldTask);
+            if (newTask && newTask.trim() !== "") {
+                await fetch(`/todos/${id}`, {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": token
+                    },
+                    body: JSON.stringify({ task: newTask })
+                });
+                loadTodos();
+            }
+        }
+
+        // Logout
+        function logout() {
+            localStorage.removeItem("token");
+            window.location.href = "login.html";
+        }
+
+        // Page load hone par todos show karein
+        loadTodos();
+    </script>
+
+</body>
+
+</html>
